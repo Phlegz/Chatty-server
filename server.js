@@ -1,38 +1,65 @@
 const uuid = require('uuid/v1');
 const express = require('express');
-const SocketServer = require('ws').Server
+const SocketServer = require('ws').Server;
 
 const PORT = 3001;
+
+//=============================***** set up the express server *****=========================================
 
 const server = express()
   .use(express.static('public'))
   .listen(PORT, '0.0.0.0', 'localhost', () => { console.log(`Listening on ${PORT}`);});
 
+//=========================********* Create the websocket server ****========================================
+
 const wss = new SocketServer({server});
 
+//=================================****** helpers fucntions ******===========================================
+
 function broadcast(data) {
+  const newData = JSON.stringify(data);
   //send the messages coming from one client to all the clients
   wss.clients.forEach((client) => {
-    client.send(JSON.stringify(data))
-  })
+    client.send(newData);
+  });
 }
 
-function handleIncomingMessage(data) {
+function handleIncomingMessage(data, color) {
   const parsedData = JSON.parse(data);
   //Add a uuid for every message that is being sent back from the client
   parsedData.id = uuid();
-  console.log(parsedData);
+  parsedData.color = color;
   broadcast(parsedData);
 }
 
-// When a client connects they are assigned a socket, represented by
-// the ws parameter in the callback.
+//=============================*******Handling the websocket connection******================================
+
+// When a client connects they are assigned a socket, represented by the client parameter in the callback.
 wss.on('connection', (client) => {
   console.log('client connected');
+
+  //Create a color on a new connection and pass it to the handleIncomingMessage to set the username color
+  const color= '#'+(Math.random()*0xFFFFFF<<0).toString(16);
+
+  //Create an object to keep track of total # of clients connected and pass it to the broadcast function
+  const usersNum = {
+    num: wss.clients.size,
+    type: 'userNumNotification'
+  };
+
+  broadcast(usersNum);
+
   client.on('message', (data) => {
-    handleIncomingMessage(data)
+    handleIncomingMessage(data, color);
   });
 
-  // Set up a callback for when a client closes the socket.
-  client.on('close', () => console.log('Client disconnected'));
-})
+  client.on('close', () => {
+    console.log('client disconnected');
+    const usersNum = {
+      num :wss.clients.size,
+      type: 'userNumNotification'
+    };
+    broadcast(usersNum);
+  });
+
+});
