@@ -26,6 +26,12 @@ function broadcast(data) {
 
 function handleIncomingMessage(data, color) {
   const parsedData = JSON.parse(data);
+
+  //we test an input against the expression that starts with http/https and ends in .jpg/.jpeg/.png/.gif  and it's case insensitive
+  const reg = /^https?:\/\/.+\.(jpe?g|png|gif)$/i ;
+  if (reg.test(parsedData.content)) {
+    parsedData.type = 'imageMessage';
+  }
   //Add a uuid for every message that is being sent back from the client
   parsedData.id = uuid();
   parsedData.color = color;
